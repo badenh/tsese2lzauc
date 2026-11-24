@@ -1,0 +1,113 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "GBL2",
+      "Effect": "Deny",
+      "Action": [
+        "acm:*",
+        "kms:*",
+        "sns:Publish"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringNotEquals": {
+          "aws:RequestedRegion": [
+            "${HOME_REGION}",
+            "us-east-1"
+          ]
+        },
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "GBL1",
+      "Effect": "Deny",
+      "NotAction": [
+        "a4b:*",
+        "acm:*",
+        "access-analyzer:*",
+        "artifact:*",
+        "aws-marketplace-management:*",
+        "aws-marketplace:*",
+        "budgets:*",
+        "ce:*",
+        "chime:*",
+        "cloudfront:*",
+        "cloudtrail:*",
+        "cloudwatch:GetMetricData",
+        "config:*",
+        "cur:*",
+        "directconnect:*",
+        "ec2:DescribeRegions",
+        "ec2:DescribeTransitGateways",
+        "ec2:DescribeVpnGateways",
+        "fms:*",
+        "globalaccelerator:*",
+        "guardduty:*",
+        "health:*",
+        "iam:*",
+        "kms:*",
+        "networkmanager:*",
+        "organizations:*",
+        "pricing:*",
+        "pricingplanmanager:*",
+        "route53:*",
+        "route53domains:*",
+        "s3:GetAccountPublic*",
+        "s3:GetBucketLocation",
+        "s3:ListAllMyBuckets",
+        "shield:*",
+        "sts:*",
+        "support:*",
+        "trustedadvisor:*",
+        "waf-regional:*",
+        "waf:*",
+        "wafv2:*",
+        "route53-recovery-readiness:*",
+        "route53-recovery-control-config:*",
+        "s3:GetStorageLens*",
+        "s3:ListStorageLens*",
+        "s3:CreateMultiR*",
+        "s3:DeleteMultiR*",
+        "s3:DescribeMultiR*",
+        "s3:GetMultiR*",
+        "s3:ListMultiR*",
+        "s3:PutMultiR*",
+        "sns:Publish",
+        "tag:GetResources",
+        "sso:DescribeRegisteredRegions",
+        "billing:*",
+        "freetier:*",
+        "account:*",
+        "invoicing:*",
+        "payments:GetPaymentStatus",
+        "payments:ListPaymentPreferences",
+        "tax:ListTaxRegistrations",
+        "sustainability:*",
+        "quicksight:DescribeAccountSubscription",
+        "bedrock:*",
+        "bedrock-mantle:*",
+        "sagemaker:L*",
+        "uxc:*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringNotEquals": {
+          "aws:RequestedRegion": "${HOME_REGION}"
+        },
+        "ArnNotLike": {
+          "aws:PrincipalARN": [
+            "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}*",
+            "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}"
+          ]
+        }
+      }
+    }
+  ]
+}

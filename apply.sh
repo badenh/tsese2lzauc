@@ -27,10 +27,13 @@ fi
 echo "Applying $HERE/replacements-for-tse-se.yaml to $TARGET"
 node "$UPSTREAM/scripts/config-replacer.js" -w "$TARGET" "$HERE/replacements-for-tse-se.yaml"
 
-# Phase B — overlay step (not populated yet).
-# if [[ -d "$HERE/overlay" ]]; then
-#   echo "Copying overlay files into $TARGET"
-#   cp -R "$HERE/overlay/." "$TARGET/"
-# fi
+# Overlay step: TSE-SE-specific sidecar files (new SCP JSON, SSM remediation
+# documents, and custom-config-rule IAM role JSONs). The upstream
+# config-replacer.js only patches existing files; it has no addFile
+# capability, so these ship as a copy-over overlay.
+if [[ -d "$HERE/overlay" ]]; then
+  echo "Copying overlay files into $TARGET"
+  cp -R "$HERE/overlay/." "$TARGET/"
+fi
 
 echo "Done. Review $HERE/admin-changes.md for admin values to configure."

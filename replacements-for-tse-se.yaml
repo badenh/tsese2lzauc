@@ -126,6 +126,24 @@
               - RESOURCES
             additionalArtifacts:
               - ATHENA
+- filename: organization-config.yaml
+  items:
+    - pattern: '        - Suspended'
+      replacement: |2-
+                - Suspended
+          # TSE-SE: in-configuration data-residency enforcement (GBL1 + GBL2 from LZA-Guardrails-Sensitive.json).
+          # REVIEW: watch the Control Tower SCP quota; attach at account level if you exceed it.
+          - name: "{{ AcceleratorPrefix }}-Data-Residency"
+            description: >
+              TSE-SE GBL1/GBL2 - restrict activity to approved regions and
+              scope global-service operations to the home region and us-east-1.
+            policy: service-control-policies/data-residency.json
+            type: customerManaged
+            deploymentTargets:
+              organizationalUnits:
+                - Infrastructure
+                - Security
+                - Workloads
 - filename: security-config.yaml
   items:
     - pattern: '    enable: true # Enables SCPs integrity by reverting manual unauthorized changes'
@@ -136,6 +154,16 @@
       replacement: '    publishSensitiveDataFindings: true # TSE-SE: publish sensitive-data findings to Security Hub'
     - pattern: '      exportFrequency: SIX_HOURS # Exports findings every 6 HOURS'
       replacement: '      exportFrequency: FIFTEEN_MINUTES # TSE-SE: near-real-time export'
+    - pattern: |2
+                    template: ssm-documents/attach-iam-instance-profile.yaml
+      replacement: |2
+                    template: ssm-documents/attach-iam-instance-profile.yaml
+                  # TSE-SE: S3 SSE-KMS remediation (document YAML ships in overlay/ssm-documents/)
+                  - name: "{{ AcceleratorPrefix }}-Put-S3-Encryption"
+                    template: ssm-documents/s3-encryption.yaml
+                  # TSE-SE: S3 HTTPS-only remediation (document YAML ships in overlay/ssm-documents/)
+                  - name: "{{ AcceleratorPrefix }}-S3-Enforce-HTTPS"
+                    template: ssm-documents/s3-enforce-https.yaml
     - pattern: '  hardExpiry: false # Allows grace period at password expiration'
       replacement: '  hardExpiry: true # TSE-SE: expired passwords require admin unlock'
     - pattern: |2
@@ -450,3 +478,319 @@
                   statistic: Sum
                   threshold: 1
                   treatMissingData: notBreaching
+    - pattern: |2-
+                        value: ${ACCEL_LOOKUP::Bucket:elbLogs}
+                        type: StringList
+      replacement: |2-
+                        value: ${ACCEL_LOOKUP::Bucket:elbLogs}
+                        type: StringList
+                # TSE-SE: active auto-remediation for S3 SSE-KMS, S3 HTTPS-only, and EC2 IMDSv2.
+                # REVIEW: SSM remediation documents (s3-encryption.yaml, s3-enforce-https.yaml) and
+                # REVIEW: remediation-role JSONs ship in overlay/; cp into the merged tree before deploying.
+                - name: "{{ AcceleratorPrefix }}-s3-bucket-server-side-encryption-enabled"
+                  identifier: S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED
+                  complianceResourceTypes:
+                    - AWS::S3::Bucket
+                  tags:
+                    - key: Accelerator
+                      value: "{{ AcceleratorPrefix }}"
+                  remediation:
+                    rolePolicyFile: custom-config-rules/bucket-sse-enabled-remediation-role.json
+                    automatic: true
+                    targetId: "{{ AcceleratorPrefix }}-Put-S3-Encryption"
+                    retryAttemptSeconds: 60
+                    maximumAutomaticAttempts: 5
+                    parameters:
+                      - name: BucketName
+                        value: RESOURCE_ID
+                        type: String
+                      - name: KMSMasterKey
+                        value: ${ACCEL_LOOKUP::KMS}
+                        type: StringList
+                - name: "{{ AcceleratorPrefix }}-s3-bucket-enforce-https"
+                  identifier: S3_BUCKET_SSL_REQUESTS_ONLY
+                  complianceResourceTypes:
+                    - AWS::S3::Bucket
+                  tags:
+                    - key: Accelerator
+                      value: "{{ AcceleratorPrefix }}"
+                  remediation:
+                    rolePolicyFile: custom-config-rules/bucket-enforce-https-remediation-role.json
+                    automatic: true
+                    targetId: "{{ AcceleratorPrefix }}-S3-Enforce-HTTPS"
+                    retryAttemptSeconds: 60
+                    maximumAutomaticAttempts: 5
+                    parameters:
+                      - name: BucketName
+                        value: RESOURCE_ID
+                        type: String
+                - name: "{{ AcceleratorPrefix }}-imdsv2-check"
+                  identifier: EC2_IMDSV2_CHECK
+                  complianceResourceTypes:
+                    - AWS::EC2::Instance
+                  tags:
+                    - key: Accelerator
+                      value: "{{ AcceleratorPrefix }}"
+                  remediation:
+                    rolePolicyFile: custom-config-rules/imdsv2-remediation-role.json
+                    automatic: true
+                    targetId: AWSConfigRemediation-EnforceEC2InstanceIMDSv2
+                    retryAttemptSeconds: 60
+                    maximumAutomaticAttempts: 5
+                    parameters:
+                      - name: InstanceId
+                        value: RESOURCE_ID
+                        type: String
+- filename: service-control-policies/lza-core-workloads-guardrails-1.json
+  items:
+    - pattern: |2-
+                  "bedrock-agentcore:KmsKeyArn": "true"
+                },
+                "ArnNotLike": {
+                  "aws:PrincipalARN": [
+                    "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}*",
+                    "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+                    "arn:${PARTITION}:iam::*:role/cdk-accel*"
+                  ]
+                }
+              }
+      replacement: |2-
+                  "bedrock-agentcore:KmsKeyArn": "true"
+                },
+                "ArnNotLike": {
+                  "aws:PrincipalARN": [
+                    "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}*",
+                    "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+                    "arn:${PARTITION}:iam::*:role/cdk-accel*"
+                  ]
+                }
+              }
+            },
+            {
+              "Sid": "PMP",
+              "Effect": "Deny",
+              "Action": [
+                "aws-marketplace:As*",
+                "aws-marketplace:CreateP*",
+                "aws-marketplace:DescribePri*",
+                "aws-marketplace:Di*",
+                "aws-marketplace:ListP*",
+                "aws-marketplace:Start*"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "EBS1",
+              "Effect": "Deny",
+              "Action": "ec2:RunInstances",
+              "Resource": "arn:${PARTITION}:ec2:*:*:volume/*",
+              "Condition": {
+                "Bool": {
+                  "ec2:Encrypted": "false"
+                }
+              }
+            },
+            {
+              "Sid": "EBS2",
+              "Effect": "Deny",
+              "Action": "ec2:CreateVolume",
+              "Resource": "*",
+              "Condition": {
+                "Bool": {
+                  "ec2:Encrypted": "false"
+                }
+              }
+            },
+            {
+              "Sid": "EFS",
+              "Effect": "Deny",
+              "Action": "elasticfilesystem:CreateFileSystem",
+              "Resource": "*",
+              "Condition": {
+                "Bool": {
+                  "elasticfilesystem:Encrypted": "false"
+                }
+              }
+            },
+            {
+              "Sid": "RDS",
+              "Effect": "Deny",
+              "Action": "rds:CreateDBInstance",
+              "Resource": "arn:${PARTITION}:rds:*:*:db:*",
+              "Condition": {
+                "StringNotLike": {
+                  "rds:DatabaseEngine": [
+                    "aurora*",
+                    "docdb*",
+                    "neptune"
+                  ]
+                },
+                "Bool": {
+                  "rds:StorageEncrypted": "false"
+                }
+              }
+            },
+            {
+              "Sid": "AUR",
+              "Effect": "Deny",
+              "Action": "rds:CreateDBCluster",
+              "Resource": "*",
+              "Condition": {
+                "StringLike": {
+                  "rds:DatabaseEngine": [
+                    "aurora*",
+                    "docdb*",
+                    "neptune"
+                  ]
+                },
+                "Bool": {
+                  "rds:StorageEncrypted": "false"
+                }
+              }
+            },
+            {
+              "Sid": "OTHS",
+              "Effect": "Deny",
+              "Action": [
+                "organizations:LeaveOrg*",
+                "organizations:CloseAccount",
+                "ds:AcceptSharedDir*",
+                "ds:ShareDir*",
+                "ds:EnableSso",
+                "ds:DisableSso",
+                "ram:AcceptResourceShareInv*",
+                "ram:AssociateResourceShare",
+                "ram:CreateResourceShare",
+                "ram:EnableSharingWithAwsOrg*",
+                "lightsail:*",
+                "gamelift:*",
+                "appflow:*",
+                "iq:*",
+                "account:P*",
+                "account:GetAl*",
+                "account:GetC*",
+                "account:GetR*",
+                "account:C*",
+                "account:D*",
+                "account:E*",
+                "account:L*"
+              ],
+              "Resource": "*",
+              "Condition": {
+                "ArnNotLike": {
+                  "aws:PrincipalARN": [
+                    "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}*",
+                    "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}"
+                  ]
+                }
+              }
+            },
+            {
+              "Sid": "NET2",
+              "Effect": "Deny",
+              "Action": [
+                "ec2:AcceptVpc*",
+                "ec2:AcceptTransitGateway*",
+                "ec2:AssociateClientVpn*",
+                "ec2:AuthorizeClientVpn*",
+                "ec2:AttachInternetGateway",
+                "ec2:AttachVpnGateway",
+                "ec2:CreateCarrierGateway",
+                "ec2:CreateClientVpn*",
+                "ec2:CreateCustomerGateway",
+                "ec2:CreateEgressOnlyInternetGateway",
+                "ec2:CreateInternetGateway",
+                "ec2:CreateNatGateway",
+                "ec2:CreateTransitGateway*",
+                "ec2:CreateVpc",
+                "ec2:CreateVpcEndpoint",
+                "ec2:CreateVpcPeeringConnection",
+                "ec2:CreateVpn*",
+                "ec2:DeleteClientVpn*",
+                "ec2:DeleteNetworkAcl*",
+                "ec2:AllocateAddress",
+                "ec2:AssociateAddress",
+                "ec2:ModifyClientVpn*",
+                "ec2:ModifyImageAttribute",
+                "ec2:ModifySnapshotAttribute",
+                "ec2:ModifyVpn*",
+                "ec2:RevokeClientVpn*",
+                "rds:ModifyDBSnapshotAttribute",
+                "rds:ModifyDBClusterSnapshotAttribute",
+                "elasticmapreduce:PutBlockPublic*",
+                "globalaccelerator:Create*",
+                "globalaccelerator:Update*",
+                "kms:ScheduleKeyDeletion",
+                "kms:Delete*",
+                "iam:CreateGroup",
+                "iam:CreateUser",
+                "iam:CreateAccessKey",
+                "iam:DeleteUser",
+                "iam:UpdateUser",
+                "iam:DeleteGroup",
+                "iam:UpdateGroup",
+                "iam:DeleteRolePermissionsBoundary",
+                "iam:AddUserToGroup",
+                "iam:TagUser",
+                "networkmanager:Create*",
+                "networkmanager:Update*",
+                "networkmanager:Associate*",
+                "networkmanager:Disassociate*",
+                "networkmanager:Register*",
+                "networkmanager:Deregister*"
+              ],
+              "Resource": "*",
+              "Condition": {
+                "ArnNotLike": {
+                  "aws:PrincipalArn": [
+                    "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}*",
+                    "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}"
+                  ]
+                }
+              }
+- filename: service-control-policies/lza-infrastructure-guardrails-1.json
+  items:
+    - pattern: |2-
+                  "bedrock-agentcore:KmsKeyArn": "true"
+                },
+                "ArnNotLike": {
+                  "aws:PrincipalARN": [
+                    "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}*",
+                    "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+                    "arn:${PARTITION}:iam::*:role/cdk-accel*"
+                  ]
+                }
+              }
+      replacement: |2-
+                  "bedrock-agentcore:KmsKeyArn": "true"
+                },
+                "ArnNotLike": {
+                  "aws:PrincipalARN": [
+                    "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}*",
+                    "arn:${PARTITION}:iam::*:role/${MANAGEMENT_ACCOUNT_ACCESS_ROLE}",
+                    "arn:${PARTITION}:iam::*:role/cdk-accel*"
+                  ]
+                }
+              }
+            },
+            {
+              "Sid": "NFW",
+              "Effect": "Deny",
+              "Action": [
+                "network-firewall:AssociateSub*",
+                "network-firewall:DisassociateSub*",
+                "network-firewall:Create*",
+                "network-firewall:Delete*",
+                "network-firewall:Update*"
+              ],
+              "Resource": [
+                "arn:${PARTITION}:network-firewall:*:*:firewal*/${ACCELERATOR_PREFIX}*",
+                "arn:${PARTITION}:network-firewall:*:*:state*/${ACCELERATOR_PREFIX}*"
+              ],
+              "Condition": {
+                "ArnNotLike": {
+                  "aws:PrincipalARN": [
+                    "arn:${PARTITION}:iam::*:role/${ACCELERATOR_PREFIX}*"
+                  ]
+                }
+              }
