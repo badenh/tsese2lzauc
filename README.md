@@ -45,9 +45,10 @@ Items 8-16 ship opinionated defaults — standard LZA UC OU names (`Security`, `
 ## Apply
 
 ```bash
-# 1. Clone UC at the pinned ref and merge the network module
+# 1. Clone UC at the pinned ref, install its script deps, and merge the network module
 git clone --branch v1.4.1 https://github.com/aws/lza-universal-configuration.git
 cd lza-universal-configuration
+npm install                     # config-replacer.js needs js-yaml
 mkdir -p /tmp/lza-tse-se
 cp -r modules/base/default/. /tmp/lza-tse-se/
 cp -r modules/network/hub-and-spoke/. /tmp/lza-tse-se/
@@ -68,6 +69,13 @@ cp -r modules/network/hub-and-spoke/. /tmp/lza-tse-se/
 ## How this was generated
 
 [`lzaucreplgen`](https://github.com/badenh/lzaucreplgen) diffs a configured LZA UC instance against the upstream template and emits a replacements file, then round-trip-validates by applying the file back and byte-comparing. See the walkthrough in [`work/`](./work/) if reproducing.
+
+## Known rough edges
+
+- **UC script dependencies.** Upstream `config-replacer.js` requires `js-yaml`. Run `npm install` inside your UC checkout before invoking `apply.sh` or calling the replacer directly.
+- **`NET2` statement casing.** The TSE-SE `NET2` statement in `lza-core-workloads-guardrails-1.json` uses `aws:PrincipalArn` (mixed case) in its `Condition.ArnNotLike`, while every other UC statement in that file uses `aws:PrincipalARN` (all caps). Preserved verbatim from TSE-SE source. IAM evaluates condition-key names case-insensitively so behaviour is identical; flagged here so reviewers aren't surprised by the stylistic inconsistency.
+- **`GBL1` reaches `Workloads/Sandbox` through inheritance.** The data-residency SCP targets `Infrastructure`, `Security`, and `Workloads`. Everything under `Workloads/*` (including `Workloads/Sandbox`) inherits it. If your Sandbox tier runs cross-region workloads that `GBL1` would block, retarget the SCP to the specific child OUs and skip Sandbox explicitly.
+- **No CI round-trip gate yet.** Regenerating the replacements file against a new UC tag is a manual step. A CI job that reruns `lzaucreplgen` and fails on unexpected mismatches is a sensible next addition once more churn starts landing.
 
 ## Scope boundaries
 
