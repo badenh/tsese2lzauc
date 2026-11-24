@@ -35,7 +35,6 @@
             dynamicPartitioning: dynamic-partitioning/log-filters.json # Dynamic Filtering for CloudWatch Logs
             # TSE-SE: account-level log capture (new and existing log groups auto-subscribed)
             subscription:
-              selectionCriteria: ""
               type: ACCOUNT
               overrideExisting: true
             # TSE-SE: per-account CMK for CloudWatch Logs
@@ -234,15 +233,17 @@
                   metricNamespace: CloudTrailMetrics
                   metricName: VPCChanges
                   metricValue: "1"
+                # REVIEW: the next two filterPatterns carry TSE-SE's sample 10.10.10.* CIDR.
+                # REVIEW: replace with your on-prem source range(s) before applying.
                 - filterName: "{{ AcceleratorPrefix }}-SSOAuthUnapprovedIPMetric"
                   logGroupName: "aws-controltower/CloudTrailLogs"
-                  filterPattern: "{ ($.eventSource=sso.amazonaws.com) && ($.eventName=Authenticate) && ($.sourceIPAddress != 10.10.10.*) }" # Needs Updating
+                  filterPattern: "{ ($.eventSource=sso.amazonaws.com) && ($.eventName=Authenticate) && ($.sourceIPAddress != 10.10.10.*) }" # REVIEW: replace 10.10.10.*
                   metricNamespace: CloudTrailMetrics
                   metricName: SSOAuthUnapprovedIPCount
                   metricValue: "1"
                 - filterName: "{{ AcceleratorPrefix }}-IAMAuthUnapprovedIPMetric"
                   logGroupName: "aws-controltower/CloudTrailLogs"
-                  filterPattern: "{ ($.eventName=ConsoleLogin) && ($.userIdentity.type=IAMUser) && ($.sourceIPAddress != 10.10.10.*) }" # Needs Updating
+                  filterPattern: "{ ($.eventName=ConsoleLogin) && ($.userIdentity.type=IAMUser) && ($.sourceIPAddress != 10.10.10.*) }" # REVIEW: replace 10.10.10.*
                   metricNamespace: CloudTrailMetrics
                   metricName: IAMAuthUnapprovedIPCount
                   metricValue: "1"
@@ -402,6 +403,9 @@
                   statistic: Sum
                   threshold: 1
                   treatMissingData: notBreaching
+                # REVIEW: the next two alarmDescriptions embed CloudWatch Logs Insights queries that
+                # REVIEW: contain the literal REPLACE_WITH_ON_PREM_IP token (URL-encoded %22REPLACE_WITH_ON_PREM_IP%22).
+                # REVIEW: replace with your on-prem CIDR before applying.
                 - alarmName: "{{ AcceleratorPrefix }}-AWS-SSO-Authentication-From-Unapproved-IP"
                   alarmDescription: "SSO auth from unapproved IP. https://console.aws.amazon.com/cloudwatch/home?region={{ AcceleratorHomeRegion }}#alarmsV2:alarm/{{ AcceleratorPrefix }}-AWS-SSO-Authentication-From-Unapproved-IP | [Logs](https://console.aws.amazon.com/cloudwatch/home?region={{ AcceleratorHomeRegion }}#logsV2:logs-insights$3FqueryDetail$3D~%28end~0~start~-86400~timeType~'RELATIVE~unit~'seconds~editorString~'fields*20*40timestamp*2c*20eventName*2c*20sourceIPAddress*2c*20userIdentity.arn*0a*7c*20filter*20eventSource*20*3d*20*22sso.amazonaws.com*22*20and*20eventName*20*3d*20*22Authenticate*22*20and*20sourceIPAddress*20not*20like*20*22REPLACE_WITH_ON_PREM_IP*22*0a*7c*20sort*20*40timestamp*20desc*0a*7c*20limit*2010~source~%28~'aws-controltower/CloudTrailLogs%29%29)"
                   snsTopicName: SecurityHigh

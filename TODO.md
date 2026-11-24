@@ -14,7 +14,7 @@ Each entry links to the corresponding section in TSE-SE's [uplift guide](https:/
 - **Delivery:** replacements-file pattern/replacement for the YAML append + overlay file for the JSON. The upstream `config-replacer.js` does not `addFile`; the overlay ships under `overlay/` with a documented `cp` step or via `release-package.js` compatible `postActions` (which the upstream replacer doesn't honour).
 
 ## 3. Near-real-time sensitive-data and threat findings
-- Phase A applied the two 15-minute frequencies and the `publishSensitiveDataFindings: true` flag.
+- Phase A flipped `guardduty.exportFrequency` from `SIX_HOURS` to `FIFTEEN_MINUTES` and `macie.publishSensitiveDataFindings` to `true`. Macie's `policyFindingsPublishingFrequency` was already `FIFTEEN_MINUTES` in the UC baseline, so no edit was needed there.
 - Nothing left for this section unless the user also wants `s3Protection.excludeRegions` tightened.
 
 ## 4. CIS monitoring alarms — DONE in part 1
