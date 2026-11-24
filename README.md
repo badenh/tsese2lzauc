@@ -8,7 +8,7 @@ This repo encodes that uplift as a UC `replacements` file in the same shape as t
 
 ## Authorship
 
-The TSE-SE to LZA UC port in this repository was created by **Baden Hughes**, an independent security tooling and compliance engineer. It is not an AWS product and is not endorsed by AWS, the AWS Landing Zone Accelerator team, or the TSE-SE project.
+The TSE-SE to LZA UC port in this repository was created by **[Baden Hughes](https://www.linkedin.com/in/badenhughes/)**, an independent security tooling and compliance engineer. It is not an AWS product and is not endorsed by AWS, the AWS Landing Zone Accelerator team, or the TSE-SE project.
 
 ## Disclaimer and warranty
 
@@ -121,8 +121,6 @@ The coverage grew in three phases, each round-trip-validated against `aws/lza-un
 Seen something wrong? Disagree with a choice? Have a question?
 
 **[Raise an issue in this repo](https://github.com/badenh/tsese2lzauc/issues)** if it's about the TSE-SE to LZA UC port — the pattern/replacement entries, overlay files, opinionated defaults, documentation, or the round-trip validation. We'll take a look, and where the underlying concern actually lives in [TSE-SE](https://github.com/aws-samples/landing-zone-accelerator-on-aws-for-tse-se), the [AWS Landing Zone Accelerator on AWS](https://github.com/awslabs/landing-zone-accelerator-on-aws) solution, or [LZA Universal Configuration](https://github.com/aws/lza-universal-configuration), we'll pass it upstream to the right project.
-
-Issues that are really about the upstream projects — bugs in LZA UC's baseline, TSE-SE's uplift guidance, or the LZA solution itself — are best raised directly with those teams. Link back to this repo if useful.
 
 ## Credits and attribution
 
