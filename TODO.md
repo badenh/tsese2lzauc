@@ -1,15 +1,11 @@
-# Phase B — remaining TSE-SE uplift coverage
+# Phase B part 2 — remaining TSE-SE uplift coverage
 
-Phase A covers the simple in-place functional toggles. The following uplift sections involve either inserting large structured blocks into UC config files or shipping new sidecar files (SCP JSON, SSM documents, custom-config-rule IAM roles). These need deliberate decisions about OU targets and compliance scope before encoding.
+Phase A (seven simple toggles) and Phase B part 1 (per-account CMKs, `ssmInventory`, account-level log subscription, CIS monitoring `metricSets`/`alarmSets`) are encoded in `replacements-for-tse-se.yaml`. The remaining uplift sections below either ship new sidecar files (SCP JSON, SSM documents, custom-config-rule IAM roles) or require merging TSE-SE SCP statements into existing UC SCP JSON files. These need deliberate decisions about OU targets and compliance scope before encoding.
 
 Each entry links to the corresponding section in TSE-SE's [uplift guide](https://github.com/aws-samples/landing-zone-accelerator-on-aws-for-tse-se/blob/main/uplift-to-tse-se/README.md).
 
-## 1. Per-account customer-managed KMS keys (CMKs)
-- **Uplift section:** [Per-account customer-managed KMS keys (CMKs)](https://github.com/aws-samples/landing-zone-accelerator-on-aws-for-tse-se/blob/main/uplift-to-tse-se/README.md#per-account-customer-managed-kms-keys-cmks)
-- **Target files:** `global-config.yaml`
-- **Shape:** add 4 top-level blocks (`s3.encryption.createCMK`, `lambda.encryption.useCMK`, `sqs.encryption.useCMK`, `logging.cloudwatchLogs.encryption.useCMK`) with identical `deploymentTargets`.
-- **Blockers:** UC baseline has no `s3:` / `lambda:` / `sqs:` top-level blocks in `global-config.yaml`, so these are pure inserts. User must supply `excludedRegions` matching their enabled-region strategy.
-- **Approach:** insert as a single `pattern`/`replacement` hunk anchored on a stable preceding line (e.g. the `# SNS Configurations` header).
+## 1. Per-account customer-managed KMS keys (CMKs) — DONE in part 1
+- Encoded as three new top-level blocks (`s3`, `lambda`, `sqs`) inserted before `# AWS Cost and Usage Reports`, plus `logging.cloudwatchLogs.encryption` nested in the existing `logging` block. Opinionated OU defaults; `excludedRegions` **not** set — add per your enabled-region strategy.
 
 ## 2. In-configuration data-residency enforcement
 - **Uplift section:** [In-configuration data-residency enforcement](https://github.com/aws-samples/landing-zone-accelerator-on-aws-for-tse-se/blob/main/uplift-to-tse-se/README.md#in-configuration-data-residency-enforcement)
@@ -21,12 +17,8 @@ Each entry links to the corresponding section in TSE-SE's [uplift guide](https:/
 - Phase A applied the two 15-minute frequencies and the `publishSensitiveDataFindings: true` flag.
 - Nothing left for this section unless the user also wants `s3Protection.excludeRegions` tightened.
 
-## 4. CIS monitoring alarms
-- **Uplift section:** [CIS monitoring alarms](https://github.com/aws-samples/landing-zone-accelerator-on-aws-for-tse-se/blob/main/uplift-to-tse-se/README.md#cis-monitoring-alarms)
-- **Target files:** `security-config.yaml` (`cloudWatch.metricSets` and `cloudWatch.alarmSets`).
-- **Shape:** replace the two empty arrays with the full block copied from TSE-SE `security-config.yaml`, repointing every `logGroupName` to `aws-controltower/CloudTrailLogs`.
-- **Blockers:** TSE-SE source file has a long list (root usage, unauthorized API, console sign-in without MFA, IAM/CloudTrail/Config changes, NACL/gateway/route-table/VPC changes, CMK disable/delete, unapproved-source-IP, unencrypted-filesystem). Needs extraction from TSE-SE repo.
-- **Approach:** large `pattern: metricSets: []` / `alarmSets: []` → full block replacement, two items.
+## 4. CIS monitoring alarms — DONE in part 1
+- Full `metricSets` + `alarmSets` block from TSE-SE `security-config.yaml` (lines 525-827) inlined via a single pattern/replacement on `cloudWatch:\n  metricSets: []\n  alarmSets: []`. `logGroupName` and `{{CloudTrailLogGroup}}` references rewritten to `aws-controltower/CloudTrailLogs`. Two unapproved-IP filter patterns still carry the TSE-SE example `10.10.10.*` / `REPLACE_WITH_ON_PREM_IP` placeholders — **replace with your on-prem CIDR before applying**.
 
 ## 5. Additional SCP hardening (EBS/EFS/RDS/AUR/PMP/OTHS)
 - **Uplift section:** [Additional SCP hardening](https://github.com/aws-samples/landing-zone-accelerator-on-aws-for-tse-se/blob/main/uplift-to-tse-se/README.md#additional-scp-hardening)
@@ -50,9 +42,9 @@ Each entry links to the corresponding section in TSE-SE's [uplift guide](https:/
 - **Shape:** add three Config rules (`S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED`, `S3_BUCKET_SSL_REQUESTS_ONLY`, `EC2_IMDSV2_CHECK`) with `remediation` blocks; ship `ssm-documents/s3-encryption.yaml`, `ssm-documents/s3-enforce-https.yaml` and `custom-config-rules/{bucket-sse-enabled-remediation-role,bucket-enforce-https-remediation-role,imdsv2-remediation-role}.json` from TSE-SE source.
 - **Delivery:** YAML rules via replacements file + overlay dir for new files.
 
-## 9. Longer retention / finer granularity — remainder
-- Phase A covered `cloudwatchLogRetentionInDays`, CUR hourly+resources+Athena, session-manager S3, SCP-tamper SNS, `iamPasswordPolicy.hardExpiry`.
-- **Remaining:** `ssmInventory.enable: true` and `logging.cloudwatchLogs.subscription` with `type: ACCOUNT`. Both are top-level inserts.
+## 9. Longer retention / finer granularity — DONE
+- Phase A: `cloudwatchLogRetentionInDays`, CUR hourly+resources+Athena, session-manager S3, SCP-tamper SNS, `iamPasswordPolicy.hardExpiry`.
+- Phase B part 1: `ssmInventory.enable: true` with standard-OU targets; `logging.cloudwatchLogs.subscription.type: ACCOUNT` with `overrideExisting: true`.
 
 ## 10. shared-vpc network variant
 - Phase A: **same file works for both** (`global-config.yaml` + `security-config.yaml` are identical across network overlays). Re-apply verified clean on both merged trees.

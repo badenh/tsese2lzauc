@@ -8,9 +8,11 @@ This repo encodes that uplift as a UC `replacements` file in the same shape as t
 
 ## Status
 
-**Phase A — in-place functional toggles (this release).** Round-trip verified against `lza-universal-configuration@v1.4.1` on the `hub-and-spoke` network module (0 unexpected byte mismatches). Re-apply also verified clean against the `shared-vpc` merged tree.
+**Phase A — in-place functional toggles.** Round-trip verified against `lza-universal-configuration@v1.4.1` on the `hub-and-spoke` network module (0 unexpected byte mismatches). Re-apply also verified clean against the `shared-vpc` merged tree.
 
-**Phase B — block inserts and new-file assets (pending).** Several uplift sections require inserting large blocks (CIS metric and alarm sets, S3/Lambda/SQS/CloudWatch CMK blocks) or shipping new files (data-residency SCP, custom SSM remediation documents, custom-config-rule roles). These are captured in [TODO.md](TODO.md).
+**Phase B part 1 — large YAML inserts (this release).** Three further uplift sections encoded as pattern/replacement entries: per-account CMKs (`s3`/`lambda`/`sqs`/`logging.cloudwatchLogs.encryption`), `ssmInventory`, `logging.cloudwatchLogs.subscription` (`type: ACCOUNT`), and the full CIS monitoring `metricSets` + `alarmSets` block with `logGroupName` repointed to `aws-controltower/CloudTrailLogs`. Round-trip 0 unexpected byte mismatches.
+
+**Phase B part 2 — SCP overlay + auto-remediation (pending).** Items requiring overlay files or surgical JSON merges (data-residency SCP, EBS/EFS/RDS/AUR/PMP/OTHS/NET2 workload-SCP additions, NFW infra-SCP addition, auto-remediation Config rules + SSM documents + remediation-role JSONs). These are captured in [TODO.md](TODO.md).
 
 ## Pin
 
@@ -28,8 +30,12 @@ This repo encodes that uplift as a UC `replacements` file in the same shape as t
 | 5 | Sensitive-data discovery | `macie.publishSensitiveDataFindings: true` | `security-config.yaml` |
 | 6 | Near-real-time threat detection | `guardduty.exportFrequency: SIX_HOURS → FIFTEEN_MINUTES` | `security-config.yaml` |
 | 7 | Stricter password lockout | `iamPasswordPolicy.hardExpiry: true` | `security-config.yaml` |
+| 8 | Per-account CMKs | `s3`, `lambda`, `sqs`, `logging.cloudwatchLogs.encryption` blocks with `useCMK`/`createCMK: true` and standard-OU `deploymentTargets` | `global-config.yaml` |
+| 9 | Org-wide SSM inventory | `ssmInventory.enable: true` with standard-OU `deploymentTargets` | `global-config.yaml` |
+| 10 | Account-level log capture | `logging.cloudwatchLogs.subscription.type: ACCOUNT` | `global-config.yaml` |
+| 11 | CIS monitoring alarms | Full `cloudWatch.metricSets` + `alarmSets` block (CIS 1.1/3.1/3.2/3.4-3.7/3.9/3.11-3.14 + SSO/IAM unapproved-IP + unencrypted-filesystem + authorization-failure), `logGroupName` repointed to `aws-controltower/CloudTrailLogs` | `security-config.yaml` |
 
-See [TODO.md](TODO.md) for Phase B coverage.
+Items 8-11 ship opinionated defaults — standard LZA UC OU names (`Security`, `Infrastructure`, `Workloads`, `Workloads/{Dev,Test,Prod,Sandbox}`, `Management`). Review and tune `deploymentTargets` and `excludedRegions` before applying. See [TODO.md](TODO.md) for Phase B part 2 coverage.
 
 ## Apply
 
