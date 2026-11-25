@@ -135,4 +135,4 @@ The pattern/replacement edits, overlay structure, opinionated defaults, and docu
 
 ## License
 
-Apache-2.0. A `LICENSE` file carrying the full text is not yet checked in — add before the next release.
+Apache-2.0. See [`LICENSE`](LICENSE) for the full text.
